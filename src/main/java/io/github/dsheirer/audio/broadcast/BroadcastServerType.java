@@ -36,6 +36,8 @@ public enum BroadcastServerType
     ICECAST_TCP("Icecast (v2.3)", "images/icecast.png"),
     SHOUTCAST_V1("Shoutcast v1.x", "images/shoutcast.png"),
     SHOUTCAST_V2("Shoutcast v2.x", "images/shoutcast.png"),
+    THINLINE_RADIO("ThinLine Radio", null),
+    ZELLO_WORK("Zello Work", null),
     UNKNOWN("Unknown", null);
 
     private String mLabel;
