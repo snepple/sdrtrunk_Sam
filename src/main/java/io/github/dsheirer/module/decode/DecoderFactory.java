@@ -435,8 +435,11 @@ public class DecoderFactory
         }
 
         DecodeConfigNBFM decodeConfigNBFM = (DecodeConfigNBFM)decodeConfig;
-        modules.add(new NBFMDecoder(decodeConfigNBFM));
-        modules.add(new NBFMDecoderState(channel.getName(), decodeConfigNBFM));
+        NBFMDecoderState decoderState = new NBFMDecoderState(channel.getName(), decodeConfigNBFM);
+        NBFMDecoder decoder = new NBFMDecoder(decodeConfigNBFM);
+        decoder.setDecoderState(decoderState);
+        modules.add(decoder);
+        modules.add(decoderState);
         modules.add(new AudioModule(aliasList, 0, 60000, decodeConfigNBFM.isAudioFilter()));
     }
 
@@ -583,6 +586,10 @@ public class DecoderFactory
             {
                 switch(auxDecoder)
                 {
+                    case CTCSS:
+                        modules.add(new io.github.dsheirer.module.decode.ctcss.CTCSSAuxDecoder());
+                        modules.add(new io.github.dsheirer.module.decode.ctcss.CTCSSDecoderState());
+                        break;
                     case DCS:
                         modules.add(new DCSDecoder());
                         modules.add(new DCSDecoderState());

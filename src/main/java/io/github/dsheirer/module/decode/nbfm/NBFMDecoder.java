@@ -55,6 +55,7 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
         Listener<ComplexSamples>, IRealBufferProvider, IDecoderStateEventProvider, INoiseSquelchController
 {
     private final static Logger mLog = LoggerFactory.getLogger(NBFMDecoder.class);
+    private NBFMDecoderState mDecoderState;
     private static final double DEMODULATED_AUDIO_SAMPLE_RATE = 8000.0;
     private final IDemodulator mDemodulator = FmDemodulatorFactory.getFmDemodulator();
     private final SourceEventProcessor mSourceEventProcessor = new SourceEventProcessor();
@@ -99,6 +100,15 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
                 notifyCallStart();
             }
         });
+    }
+
+    /**
+     * Sets the decoder state reference for CTCSS/DCS detection integration.
+     * @param decoderState the NBFM decoder state to receive tone notifications
+     */
+    public void setDecoderState(NBFMDecoderState decoderState)
+    {
+        mDecoderState = decoderState;
     }
 
     /**
