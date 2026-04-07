@@ -630,11 +630,13 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
             mStreamActive.set(false);
             return;
         }
+        ZelloConfiguration config = getBroadcastConfiguration();
         JsonObject cmd = new JsonObject();
         cmd.addProperty("command", "start_stream");
         int seq = mSequence.getAndIncrement();
         cmd.addProperty("seq", seq);
         mPendingCommands.put(seq, "start_stream");
+        cmd.addProperty("channel", config.getChannel());
         cmd.addProperty("type", "audio");
         cmd.addProperty("codec", "opus");
         cmd.addProperty("codec_header", CODEC_HEADER_B64);
@@ -645,12 +647,14 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
     private void sendStopStream(long streamId)
     {
         if(mWebSocket == null) return;
+        ZelloConfiguration config = getBroadcastConfiguration();
         JsonObject cmd = new JsonObject();
         cmd.addProperty("command", "stop_stream");
         int seq = mSequence.getAndIncrement();
         cmd.addProperty("seq", seq);
         mPendingCommands.put(seq, "stop_stream(id=" + streamId + ")");
         cmd.addProperty("stream_id", streamId);
+        cmd.addProperty("channel", config.getChannel());
         mWebSocket.sendText(mGson.toJson(cmd), true);
     }
 
