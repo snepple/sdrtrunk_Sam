@@ -18,6 +18,9 @@
  */
 package io.github.dsheirer.controller;
 
+import io.github.dsheirer.gui.SidebarPanel;
+
+
 import com.jidesoft.swing.JideTabbedPane;
 import io.github.dsheirer.audio.playback.AudioPanel;
 import io.github.dsheirer.audio.playback.AudioPlaybackManager;
@@ -92,50 +95,27 @@ public class ControllerPanel extends JPanel
         return mNowPlayingPanel;
     }
 
+
     private void init()
     {
         setLayout(new BorderLayout());
 
-        add(mAudioPanel, BorderLayout.NORTH);
-
         mCardLayout = new CardLayout();
         mCardPanel = new JPanel(mCardLayout);
         
-        mCardPanel.add(mNowPlayingPanel, "Monitoring - Now Playing");
-        mCardPanel.add(mMapPanel, "Monitoring - Map");
-        mCardPanel.add(new JLabel("Playlist Manager (Click link below)"), "Configuration - Playlist Editor");
-        
-        DefaultListModel<String> listModel = new DefaultListModel<>();
-        listModel.addElement("Monitoring - Now Playing");
-        listModel.addElement("Monitoring - Map");
-        listModel.addElement("Configuration - Playlist Editor");
-        
-        mSidebarList = new JList<>(listModel);
-        mSidebarList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        mSidebarList.setSelectedIndex(0);
-        
-        mSidebarList.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                String selected = mSidebarList.getSelectedValue();
-                if ("Configuration - Playlist Editor".equals(selected)) {
-                    MyEventBus.getGlobalEventBus().post(new ViewPlaylistRequest());
-                    mSidebarList.setSelectedIndex(0); // revert selection
-                } else if (selected != null) {
-                    mCardLayout.show(mCardPanel, selected);
-                }
-            }
-        });
+        mCardPanel.add(mNowPlayingPanel, "now_playing");
+        mCardPanel.add(mMapPanel, "map");
+        mCardPanel.add(mTunerManagerPanel, "tuners");
 
-        JScrollPane sidebarScroll = new JScrollPane(mSidebarList);
-        
-        // Tuners panel is persistently visible below the card panel
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, mCardPanel, mTunerManagerPanel);
-        centerSplit.setResizeWeight(0.8);
-        centerSplit.setDividerLocation(400);
-
-        mSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebarScroll, centerSplit);
-        mSplitPane.setDividerLocation(200);
-        
-        add(mSplitPane, BorderLayout.CENTER);
+        add(mCardPanel, BorderLayout.CENTER);
     }
+
+    public void addView(String id, java.awt.Component view) {
+        mCardPanel.add(view, id);
+    }
+
+    public void showView(String id) {
+        mCardLayout.show(mCardPanel, id);
+    }
+
 }

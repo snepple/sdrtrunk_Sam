@@ -19,7 +19,6 @@
 package io.github.dsheirer.gui;
 
 import com.jidesoft.plaf.LookAndFeelFactory;
-import com.jidesoft.swing.JideSplitPane;
 import io.github.dsheirer.alias.AliasModel;
 import io.github.dsheirer.audio.DuplicateCallDetector;
 import io.github.dsheirer.audio.broadcast.AudioStreamingManager;
@@ -82,6 +81,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.awt.BorderLayout;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
+import javax.swing.JPanel;
 import java.util.Optional;
 import java.util.prefs.Preferences;
 import javafx.application.Platform;
@@ -125,6 +128,10 @@ public class SDRTrunk implements Listener<TunerEvent>
     private boolean mBroadcastStatusVisible;
     private boolean mResourceStatusVisible;
     private boolean mNowPlayingDetailsVisible;
+
+    private boolean mSpectrumDisabled = false;
+    private String mCurrentViewId = "now_playing";
+
     private AudioRecordingManager mAudioRecordingManager;
     private AudioStreamingManager mAudioStreamingManager;
     private BroadcastStatusPanel mBroadcastStatusPanel;
@@ -135,7 +142,7 @@ public class SDRTrunk implements Listener<TunerEvent>
     private SettingsManager mSettingsManager;
     private SpectralDisplayPanel mSpectralPanel;
     private JFrame mMainGui;
-    private JideSplitPane mSplitPane;
+    private JPanel mMainContentPanel;
     private JavaFxWindowManager mJavaFxWindowManager;
     private UserPreferences mUserPreferences = new UserPreferences();
     private TunerManager mTunerManager;
@@ -201,10 +208,58 @@ public class SDRTrunk implements Listener<TunerEvent>
                 mTunerManager, headless);
         mDiagnosticMonitor.start();
 
+
         if(!headless)
         {
             mJavaFxWindowManager = new JavaFxWindowManager(mUserPreferences, mTunerManager, mPlaylistManager);
+
+            // Add Sidebar
+            SidebarPanel sidebar = new SidebarPanel(new SidebarPanel.SidebarListener() {
+                @Override
+                public void onItemSelected(String id) {
+                    if (id.equals("exit")) {
+                        processShutdown();
+                        return;
+                    }
+                    mCurrentViewId = id;
+
+                    if (!mSpectrumDisabled && (id.equals("now_playing") || id.equals("tuners"))) {
+                        mMainContentPanel.add(mSpectralPanel, BorderLayout.NORTH);
+                    } else {
+                        mMainContentPanel.remove(mSpectralPanel);
+                    }
+
+                    mControllerPanel.showView(id);
+
+                    mMainContentPanel.revalidate();
+                    mMainContentPanel.repaint();
+                }
+
+                @Override
+                public void onActionRequested(String actionId) {
+                    if (actionId.equals("vis_disable_spec")) {
+                        mSpectrumDisabled = !mSpectrumDisabled;
+                        if (mSpectrumDisabled || (!mCurrentViewId.equals("now_playing") && !mCurrentViewId.equals("tuners"))) {
+                            mMainContentPanel.remove(mSpectralPanel);
+                        } else {
+                            mMainContentPanel.add(mSpectralPanel, BorderLayout.NORTH);
+                        }
+                    } else if (actionId.equals("vis_now_playing")) {
+
+                        toggleNowPlayingDetailsPanelVisibility();
+                    } else if (actionId.equals("vis_stream_status")) {
+                        toggleBroadcastStatusPanelVisibility();
+                    } else if (actionId.equals("vis_resource_status")) {
+                        toggleResourceStatusPanelVisibility();
+                    }
+
+                    mMainContentPanel.revalidate();
+                    mMainContentPanel.repaint();
+                }
+            });
+            mMainGui.add(sidebar, BorderLayout.WEST);
         }
+
 
         CalibrationManager calibrationManager = CalibrationManager.getInstance(mUserPreferences);
         final boolean calibrating = !calibrationManager.isCalibrated() &&
@@ -233,11 +288,24 @@ public class SDRTrunk implements Listener<TunerEvent>
 
         mNowPlayingDetailsVisible = mPreferences.getBoolean(PREFERENCE_NOW_PLAYING_DETAILS_VISIBLE, true);
 
+
         if(!GraphicsEnvironment.isHeadless())
         {
             mControllerPanel = new ControllerPanel(mPlaylistManager, audioPlaybackManager, mIconModel, mapService,
                     mSettingsManager, mTunerManager, mUserPreferences, mNowPlayingDetailsVisible);
+
+            mControllerPanel.addView("playlist_editor", mJavaFxWindowManager.getPlaylistEditorPanel());
+            mControllerPanel.addView("icon_manager", mJavaFxWindowManager.getIconManagerPanel());
+            mControllerPanel.addView("user_prefs", mJavaFxWindowManager.getUserPreferencesEditorPanel());
+            mControllerPanel.addView("msg_viewer", mJavaFxWindowManager.getRecordingViewerPanel());
+
+            LogsPanel appLogsPanel = new LogsPanel(mUserPreferences, "app");
+            LogsPanel eventLogsPanel = new LogsPanel(mUserPreferences, "event");
+            mControllerPanel.addView("logs_app", appLogsPanel);
+            mControllerPanel.addView("logs_event", eventLogsPanel);
+
         }
+
 
         mSpectralPanel = new SpectralDisplayPanel(mPlaylistManager, mSettingsManager, mTunerManager.getDiscoveredTunerModel());
 
@@ -343,7 +411,7 @@ public class SDRTrunk implements Listener<TunerEvent>
      */
     private void initGUI()
     {
-        mMainGui.setLayout(new MigLayout("insets 0 0 0 0 ", "[grow,fill]", "[grow,fill]0[shrink 0]"));
+        mMainGui.setLayout(new BorderLayout());
 
         /**
          * Setup main JFrame window
@@ -397,241 +465,29 @@ public class SDRTrunk implements Listener<TunerEvent>
         {
             mMainGui.setSize(new Dimension(1280, 800));
         }
-        mSplitPane = new JideSplitPane(JideSplitPane.VERTICAL_SPLIT);
-        mSplitPane.setDividerSize(5);
-        mSplitPane.add(mSpectralPanel);
-        mSplitPane.add(mControllerPanel);
+        mMainContentPanel = new JPanel(new BorderLayout());
+        mMainContentPanel.add(mSpectralPanel, BorderLayout.NORTH);
+        mMainContentPanel.add(mControllerPanel, BorderLayout.CENTER);
 
         mBroadcastStatusVisible = mPreferences.getBoolean(PREFERENCE_BROADCAST_STATUS_VISIBLE, false);
 
         //Show broadcast status panel when user requests - disabled by default
         if(mBroadcastStatusVisible)
         {
-            mSplitPane.add(getBroadcastStatusPanel());
+            mMainContentPanel.add(getBroadcastStatusPanel(), BorderLayout.SOUTH);
         }
 
-        mMainGui.add(mSplitPane, "cell 0 0,span,grow");
+        mMainGui.add(mMainContentPanel, BorderLayout.CENTER);
 
         mResourceMonitor.start();
         mResourceStatusVisible = mPreferences.getBoolean(PREFERENCE_RESOURCE_STATUS_VISIBLE, true);
         if(mResourceStatusVisible)
         {
-            mMainGui.add(getResourceStatusPanel(), "span,growx");
+            mMainGui.add(getResourceStatusPanel(), BorderLayout.SOUTH);
         }
 
-        /**
-         * Menu items
-         */
-        JMenuBar menuBar = new JMenuBar();
-        mMainGui.setJMenuBar(menuBar);
-
-        JMenu fileMenu = new JMenu("File");
-        menuBar.add(fileMenu);
-
-        JMenuItem processingStatusReportMenuItem = new JMenuItem("Processing Diagnostic Report");
-        processingStatusReportMenuItem.addActionListener(e -> {
-            try
-            {
-                Path path = mDiagnosticMonitor.generateProcessingDiagnosticReport("User initiated diagnostic report");
-
-                JOptionPane.showMessageDialog(mMainGui, "Report created: " +
-                        path.toString(), "Processing Status Report Created", JOptionPane.INFORMATION_MESSAGE);
-            }
-            catch(IOException ioe)
-            {
-                mLog.error("Error creating processing status report file", ioe);
-                JOptionPane.showMessageDialog(mMainGui, "Unable to create report file.  Please " +
-                        "see application log for details.", "Processing Status Report Failed", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        JMenuItem threadDumpReportMenuItem = new JMenuItem("Thread Dump Report");
-        threadDumpReportMenuItem.addActionListener(e -> {
-            try
-            {
-                Path path = mDiagnosticMonitor.generateThreadDumpReport();
-
-                JOptionPane.showMessageDialog(mMainGui, "Report created: " +
-                        path.toString(), "Thread Dump Report Created", JOptionPane.INFORMATION_MESSAGE);
-            }
-            catch(IOException ioe)
-            {
-                mLog.error("Error creating thread dump report file", ioe);
-                JOptionPane.showMessageDialog(mMainGui, "Unable to create report file.  Please " +
-                        "see application log for details.", "Thread Dump Report Failed", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        JMenu diagnosticMenu = new JMenu(("Reports"));
-        diagnosticMenu.add(processingStatusReportMenuItem);
-        diagnosticMenu.add(threadDumpReportMenuItem);
-        fileMenu.add(diagnosticMenu);
-        fileMenu.add(new JSeparator(JSeparator.HORIZONTAL));
-
-        JMenuItem exitMenu = new JMenuItem("Exit");
-        exitMenu.addActionListener(event -> {
-                processShutdown();
-                System.exit(0);
-            }
-        );
-
-        fileMenu.add(exitMenu);
-
-        JMenu viewMenu = new JMenu("View");
-
-        JMenuItem viewPlaylistItem = new JMenuItem("Playlist Editor");
-        viewPlaylistItem.setIcon(IconFontSwing.buildIcon(FontAwesome.PLAY_CIRCLE_O, 12));
-        viewPlaylistItem.addActionListener(e -> MyEventBus.getGlobalEventBus().post(new ViewPlaylistRequest()));
-        viewMenu.add(viewPlaylistItem);
-
-        viewMenu.add(new JSeparator());
-
-        JMenuItem viewApplicationLogsMenu = new JMenuItem("Application Log Files");
-        viewApplicationLogsMenu.setIcon(IconFontSwing.buildIcon(FontAwesome.FOLDER_OPEN_O, 12));
-        viewApplicationLogsMenu.addActionListener(arg0 -> {
-            File logsDirectory = mUserPreferences.getDirectoryPreference().getDirectoryApplicationLog().toFile();
-            try
-            {
-                Desktop.getDesktop().open(logsDirectory);
-            }
-            catch(Exception e)
-            {
-                mLog.error("Couldn't open file explorer");
-
-                JOptionPane.showMessageDialog(mMainGui,
-                        "Can't launch file explorer - files are located at: " + logsDirectory,
-                        "Can't launch file explorer",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        viewMenu.add(viewApplicationLogsMenu);
-
-        JMenuItem viewRecordingsMenuItem = new JMenuItem("Audio Recordings");
-        viewRecordingsMenuItem.setIcon(IconFontSwing.buildIcon(FontAwesome.FOLDER_OPEN_O, 12));
-        viewRecordingsMenuItem.addActionListener(arg0 -> {
-            File recordingsDirectory = mUserPreferences.getDirectoryPreference().getDirectoryRecording().toFile();
-
-            try
-            {
-                Desktop.getDesktop().open(recordingsDirectory);
-            }
-            catch(Exception e)
-            {
-                mLog.error("Couldn't open file explorer");
-
-                JOptionPane.showMessageDialog(mMainGui,
-                        "Can't launch file explorer - files are located at: " +
-                                recordingsDirectory,
-                        "Can't launch file explorer",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        viewMenu.add(viewRecordingsMenuItem);
-
-        JMenuItem viewEventLogsMenu = new JMenuItem("Channel Event Log Files");
-        viewEventLogsMenu.setIcon(IconFontSwing.buildIcon(FontAwesome.FOLDER_OPEN_O, 12));
-        viewEventLogsMenu.addActionListener(arg0 -> {
-            File eventLogsDirectory = mUserPreferences.getDirectoryPreference().getDirectoryEventLog().toFile();
-            try
-            {
-                Desktop.getDesktop().open(eventLogsDirectory);
-            }
-            catch(Exception e)
-            {
-                mLog.error("Couldn't open file explorer");
-
-                JOptionPane.showMessageDialog(mMainGui,
-                        "Can't launch file explorer - files are located at: " + eventLogsDirectory,
-                        "Can't launch file explorer",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        viewMenu.add(viewEventLogsMenu);
-
-        JMenuItem iconManagerMenu = new JMenuItem("Icon Manager");
-        iconManagerMenu.setIcon(IconFontSwing.buildIcon(FontAwesome.PICTURE_O, 12));
-        iconManagerMenu.addActionListener(arg0 -> MyEventBus.getGlobalEventBus().post(new ViewIconManagerRequest()));
-        viewMenu.add(iconManagerMenu);
-
-        JMenuItem recordingViewerMenu = new JMenuItem("Message Recording Viewer (.bits)");
-        recordingViewerMenu.setIcon(IconFontSwing.buildIcon(FontAwesome.BRAILLE, 12));
-        recordingViewerMenu.addActionListener(e -> MyEventBus.getGlobalEventBus().post(new ViewRecordingViewerRequest()));
-        viewMenu.add(recordingViewerMenu);
-
-        JMenuItem viewScreenCapturesMenu = new JMenuItem("Screen Captures");
-        viewScreenCapturesMenu.setIcon(IconFontSwing.buildIcon(FontAwesome.FOLDER_OPEN_O, 12));
-        viewScreenCapturesMenu.addActionListener(arg0 -> {
-            File screenCapturesDirectory = mUserPreferences.getDirectoryPreference().getDirectoryScreenCapture().toFile();
-            try
-            {
-                Desktop.getDesktop().open(screenCapturesDirectory);
-            }
-            catch(Exception e)
-            {
-                mLog.error("Couldn't open file explorer");
-
-                JOptionPane.showMessageDialog(mMainGui,
-                        "Can't launch file explorer - files are located at: " + screenCapturesDirectory,
-                        "Can't launch file explorer",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        viewMenu.add(viewScreenCapturesMenu);
-
-        JMenuItem preferencesItem = new JMenuItem("User Preferences");
-        preferencesItem.setIcon(IconFontSwing.buildIcon(FontAwesome.COG, 12));
-        preferencesItem.addActionListener(e -> MyEventBus.getGlobalEventBus().post(new ViewUserPreferenceEditorRequest()));
-        viewMenu.add(preferencesItem);
-
-        viewMenu.add(new JSeparator());
-        viewMenu.add(new TunersMenu());
-        viewMenu.add(new JSeparator());
-        viewMenu.add(new DisableSpectrumWaterfallMenuItem(mSpectralPanel));
-        viewMenu.add(new NowPlayingChannelDetailsVisibleMenuItem());
-        viewMenu.add(new BroadcastStatusVisibleMenuItem());
-        viewMenu.add(new ResourceStatusVisibleMenuItem());
-
-        menuBar.add(viewMenu);
-
-        JMenuItem screenCaptureItem = new JMenuItem("Screen Capture");
-        screenCaptureItem.setIcon(IconFontSwing.buildIcon(FontAwesome.CAMERA, 12));
-        screenCaptureItem.setMnemonic(KeyEvent.VK_C);
-        screenCaptureItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.ALT_MASK));
-        screenCaptureItem.setMaximumSize(screenCaptureItem.getPreferredSize());
-        screenCaptureItem.addActionListener(arg0 -> {
-            try
-            {
-                Robot robot = new Robot();
-
-                final BufferedImage image = robot.createScreenCapture(mMainGui.getBounds());
-
-                String filename = TimeStamp.getTimeStamp("_") + "_screen_capture.png";
-
-                final Path captureFile = mUserPreferences.getDirectoryPreference().getDirectoryScreenCapture().resolve(filename);
-
-                ThreadPool.CACHED.submit(() -> {
-                    try
-                    {
-                        ImageIO.write(image, "png", captureFile.toFile());
-                    }
-                    catch(IOException e)
-                    {
-                        mLog.error("Couldn't write screen capture to file [" + captureFile + "]", e);
-                    }
-                });
-            }
-            catch(AWTException e)
-            {
-                mLog.error("Exception while taking screen capture", e);
-            }
-        });
-
-        menuBar.add(screenCaptureItem);
     }
 
-    /**
-     * Performs shutdown operations
-     */
     private void processShutdown()
     {
         mLog.info("Application shutdown started ...");
@@ -682,11 +538,11 @@ public class SDRTrunk implements Listener<TunerEvent>
         EventQueue.invokeLater(() -> {
             if(mBroadcastStatusVisible)
             {
-                mSplitPane.add(getBroadcastStatusPanel());
+                mMainContentPanel.add(getBroadcastStatusPanel(), BorderLayout.SOUTH);
             }
             else
             {
-                mSplitPane.remove(getBroadcastStatusPanel());
+                mMainContentPanel.remove(getBroadcastStatusPanel());
             }
 
             mMainGui.revalidate();
@@ -719,7 +575,7 @@ public class SDRTrunk implements Listener<TunerEvent>
         EventQueue.invokeLater(() -> {
             if(mResourceStatusVisible)
             {
-                mMainGui.add(getResourceStatusPanel(), "span,growx");
+                mMainGui.add(getResourceStatusPanel(), BorderLayout.SOUTH);
             }
             else
             {
@@ -901,35 +757,7 @@ public class SDRTrunk implements Listener<TunerEvent>
         }
     }
 
-    public class TunersMenu extends JMenu
-    {
-        public TunersMenu()
-        {
-            super("Tuners");
-
-            addMenuListener(new MenuListener()
-            {
-                @Override
-                public void menuSelected(MenuEvent e)
-                {
-                    removeAll();
-
-                    for(DiscoveredTuner discoveredTuner: mTunerManager.getAvailableTuners())
-                    {
-                        add(new ShowTunerMenuItem(mTunerManager.getDiscoveredTunerModel(), discoveredTuner.getTuner()));
-                    }
-                }
-
-                @Override
-                public void menuDeselected(MenuEvent e) { }
-                @Override
-                public void menuCanceled(MenuEvent e) { }
-            });
-        }
-
-    }
-
-    /**
+        /**
      * Launch the application.
      */
     public static void main(String[] args)

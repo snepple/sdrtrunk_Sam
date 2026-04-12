@@ -532,4 +532,41 @@ public class JavaFxWindowManager extends Application
         mLog.info("Application Start - Parameters: " + args);
         launch(args);
     }
+
+    public JFXPanel getPlaylistEditorPanel() {
+        JFXPanel panel = new JFXPanel();
+        execute(() -> {
+            Scene scene = new Scene(getPlaylistEditor(), 1000, 750);
+            panel.setScene(scene);
+        });
+        return panel;
+    }
+
+    public JFXPanel getIconManagerPanel() {
+        JFXPanel panel = new JFXPanel();
+        execute(() -> {
+            Scene scene = new Scene(getIconManager(), 500, 500);
+            panel.setScene(scene);
+        });
+        return panel;
+    }
+
+    public JFXPanel getUserPreferencesEditorPanel() {
+        JFXPanel panel = new JFXPanel();
+        execute(() -> {
+            Scene scene = new Scene(getUserPreferencesEditor(), 900, 500);
+            panel.setScene(scene);
+        });
+        return panel;
+    }
+
+    public JFXPanel getRecordingViewerPanel() {
+        JFXPanel panel = new JFXPanel();
+        execute(() -> {
+            Scene scene = new Scene(getRecordingViewer(), 1100, 800);
+            panel.setScene(scene);
+        });
+        return panel;
+    }
+
 }
