@@ -224,7 +224,7 @@ public class IconModel
             if (original instanceof FlatSVGIcon) {
                 FlatSVGIcon svgIcon = (FlatSVGIcon) original;
                 float scale = (float) height / svgIcon.getIconHeight();
-                return svgIcon.derive(svgIcon.getIconWidth() * scale, height);
+                return svgIcon.derive(Math.round(svgIcon.getIconWidth() * scale), height);
             }
             double scale = (double) original.getIconHeight() / (double) height;
 
