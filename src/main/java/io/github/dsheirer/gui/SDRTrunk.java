@@ -411,7 +411,6 @@ public class SDRTrunk implements Listener<TunerEvent>
      */
     private void initGUI()
     {
-        mMainGui.setLayout(new BorderLayout());
 
         /**
          * Setup main JFrame window
