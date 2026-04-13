@@ -206,7 +206,7 @@ public class NowPlayingPanel extends JPanel
             getSplitPane().add(getTabbedPane());
         }
 
-        add(getSplitPane());
+        add(getSplitPane(), "grow, wrap");
         mChannelMetadataPanel.addProcessingChainSelectionListener(mChannelDetailPanel);
         mChannelMetadataPanel.addProcessingChainSelectionListener(mDecodeEventPanel);
         mChannelMetadataPanel.addProcessingChainSelectionListener(mMessageActivityPanel);
