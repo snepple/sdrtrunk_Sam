@@ -1,45 +1,16 @@
-package io.github.dsheirer.gui.playlist.twotone;
+import re
 
-import io.github.dsheirer.playlist.PlaylistManager;
-import io.github.dsheirer.playlist.TwoToneConfiguration;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.geometry.Pos;
-import javafx.geometry.Insets;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.scene.control.cell.PropertyValueFactory;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.stream.Collectors;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import java.nio.file.Path;
-import javafx.beans.binding.Bindings;
-import javafx.util.converter.NumberStringConverter;
+with open('src/main/java/io/github/dsheirer/gui/playlist/twotone/TwoToneEditor.java', 'r') as f:
+    content = f.read()
 
-public class TwoToneEditor extends VBox
-{
-    private final PlaylistManager mPlaylistManager;
-    private TableView<TwoToneConfiguration> mTableView;
-    private ObservableList<TwoToneConfiguration> mObservableConfigs;
-    private TextField mAliasField;
-    private TextField mToneAField;
-    private TextField mToneBField;
-    private TextField mTemplateField;
-    private TextField mZelloChannelField;
-    private CheckBox mZelloAlertEnabledBox;
-    private ComboBox<String> mAlertToneFileBox;
+# We want to replace the whole conflict block with our merged code.
+# The code in master has added `mObservableConfigs` and new `enableMqttPublish` features.
+# Let's keep master's table implementation and bindings, but add our Alert Tone UI inputs.
 
-    public TwoToneEditor(PlaylistManager playlistManager)
-    {
-        mPlaylistManager = playlistManager;
-        setSpacing(10);
-        setPadding(new Insets(10));
+start = content.find("<<<<<<< HEAD")
+end = content.find(">>>>>>> origin/master") + len(">>>>>>> origin/master")
 
-
+merged_code = """
         mObservableConfigs = FXCollections.observableArrayList(TwoToneConfiguration.extractor());
         if (playlistManager.getCurrentPlaylist() != null) {
             mObservableConfigs.addAll(playlistManager.getCurrentPlaylist().getTwoToneConfigurations());
@@ -155,10 +126,9 @@ public class TwoToneEditor extends VBox
         btnBox.getChildren().addAll(btnAdd, btnDel);
 
         getChildren().addAll(mTableView, editorGrid, btnBox);
+"""
 
-    }
+content = content[:start] + merged_code + content[end:]
 
-    public void process(TwoToneTabRequest request)
-    {
-    }
-}
+with open('src/main/java/io/github/dsheirer/gui/playlist/twotone/TwoToneEditor.java', 'w') as f:
+    f.write(content)

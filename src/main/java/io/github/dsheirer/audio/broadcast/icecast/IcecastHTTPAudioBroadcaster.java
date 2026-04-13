@@ -102,10 +102,10 @@ public class IcecastHTTPAudioBroadcaster extends IcecastAudioBroadcaster
                 int audioOffset = 0;
                 while(audioOffset < audio.length)
                 {
-                    byte[] chunk = Arrays.copyOfRange(audio, audioOffset, Math.min(audioOffset + mInlineRemaining, audio.length));
-                    mInlineRemaining -= chunk.length;
-                    audioOffset += chunk.length;
-                    buffer.put(chunk);
+                    int chunkLength = Math.min(mInlineRemaining, audio.length - audioOffset);
+                    buffer.put(audio, audioOffset, chunkLength);
+                    mInlineRemaining -= chunkLength;
+                    audioOffset += chunkLength;
                     if(mInlineRemaining == 0)
                     {
                         mInlineRemaining = mInlineInterval;

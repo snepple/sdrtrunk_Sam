@@ -39,6 +39,7 @@ import io.github.dsheirer.preference.source.ChannelMultiFrequencyPreference;
 import io.github.dsheirer.preference.source.TunerPreference;
 import io.github.dsheirer.preference.swing.SwingPreference;
 import io.github.dsheirer.sample.Listener;
+import io.github.dsheirer.preference.mqtt.MqttPreference;
 
 /**
  * User Preferences.  A collection of preferences that can be accessed by preference type.
@@ -189,6 +190,10 @@ public class UserPreferences implements Listener<PreferenceType>
     /**
      * Recording preferences
      */
+    public MqttPreference getMqttPreference() {
+        return mMqttPreference;
+    }
+
     public RecordPreference getRecordPreference()
     {
         return mRecordPreference;

@@ -6,6 +6,8 @@ import javafx.beans.Observable;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.util.Callback;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 
 /**
  * Two Tone configuration mapping
@@ -17,6 +19,9 @@ public class TwoToneConfiguration
     private StringProperty mZelloChannelProperty = new SimpleStringProperty();
     private double mToneA;
     private double mToneB;
+    private BooleanProperty mEnableMqttPublishProperty = new SimpleBooleanProperty(false);
+    private StringProperty mMqttTopicProperty = new SimpleStringProperty("");
+    private StringProperty mMqttPayloadProperty = new SimpleStringProperty("{\"detector\": \"[DetectorName]\", \"state\": \"ON\", \"time\": \"[Timestamp]\"}");
 
     public TwoToneConfiguration()
     {
@@ -30,6 +35,9 @@ public class TwoToneConfiguration
         copy.setZelloChannel(getZelloChannel());
         copy.setToneA(getToneA());
         copy.setToneB(getToneB());
+        copy.setEnableMqttPublish(isEnableMqttPublish());
+        copy.setMqttTopic(getMqttTopic());
+        copy.setMqttPayload(getMqttPayload());
         return copy;
     }
 
@@ -106,10 +114,61 @@ public class TwoToneConfiguration
         mToneB = toneB;
     }
 
+
+    @JacksonXmlProperty(isAttribute = true, localName = "enableMqttPublish")
+    public boolean isEnableMqttPublish()
+    {
+        return mEnableMqttPublishProperty.get();
+    }
+
+    public void setEnableMqttPublish(boolean enableMqttPublish)
+    {
+        mEnableMqttPublishProperty.set(enableMqttPublish);
+    }
+
+    @JsonIgnore
+    public BooleanProperty enableMqttPublishProperty()
+    {
+        return mEnableMqttPublishProperty;
+    }
+
+    @JacksonXmlProperty(isAttribute = true, localName = "mqttTopic")
+    public String getMqttTopic()
+    {
+        return mMqttTopicProperty.get();
+    }
+
+    public void setMqttTopic(String mqttTopic)
+    {
+        mMqttTopicProperty.set(mqttTopic);
+    }
+
+    @JsonIgnore
+    public StringProperty mqttTopicProperty()
+    {
+        return mMqttTopicProperty;
+    }
+
+    @JacksonXmlProperty(isAttribute = true, localName = "mqttPayload")
+    public String getMqttPayload()
+    {
+        return mMqttPayloadProperty.get();
+    }
+
+    public void setMqttPayload(String mqttPayload)
+    {
+        mMqttPayloadProperty.set(mqttPayload);
+    }
+
+    @JsonIgnore
+    public StringProperty mqttPayloadProperty()
+    {
+        return mMqttPayloadProperty;
+    }
     public static Callback<TwoToneConfiguration, Observable[]> extractor()
     {
         return (TwoToneConfiguration config) -> new Observable[]{
-            config.aliasProperty(), config.templateProperty(), config.zelloChannelProperty()
+            config.aliasProperty(), config.templateProperty(), config.zelloChannelProperty(), config.enableMqttPublishProperty(), config.mqttTopicProperty(), config.mqttPayloadProperty()
         };
     }
 }

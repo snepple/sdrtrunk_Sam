@@ -124,6 +124,7 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
     private final LinkedTransferQueue<float[]> mAudioQueue = new LinkedTransferQueue<>();
     private ScheduledFuture<?> mEncoderFuture;
     private ScheduledFuture<?> mRelaxationFuture; // delayed stop for relaxation_time hold-over
+    private ScheduledFuture<?> mStreamGuardFuture; // delayed start for stream guard
     private volatile long mLastAudioReceivedTime = 0;
 
     private OpusEncoder mOpusEncoder;
@@ -173,6 +174,7 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
     {
         mStopped.set(true);
         if(mRelaxationFuture != null) { mRelaxationFuture.cancel(false); mRelaxationFuture = null; }
+        if(mStreamGuardFuture != null) { mStreamGuardFuture.cancel(false); mStreamGuardFuture = null; }
         if(mStreamActive.get()) doStopRealTimeStream();
         if(mReconnectFuture != null) { mReconnectFuture.cancel(true); mReconnectFuture = null; }
         mKicked.set(false);
@@ -230,17 +232,10 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
             doStopRealTimeStream();
         }
 
-        // Enforce minimum gap between streams (like Bridge's stream_guard_timeout_ms).
-        // On busy channels, the server may not have fully released the previous stream.
-        // A value of 0 disables the guard entirely.
-        long guardMs = getBroadcastConfiguration().getStreamGuardMs();
-        long elapsed = System.currentTimeMillis() - mLastStreamStopTime;
-        if(guardMs > 0 && mLastStreamStopTime > 0 && elapsed < guardMs)
+        if(mStreamGuardFuture != null)
         {
-            long waitMs = guardMs - elapsed;
-            mLog.debug("{}Stream guard: waiting {}ms before starting new stream", ch(), waitMs);
-            try { Thread.sleep(waitMs); }
-            catch(InterruptedException e) { Thread.currentThread().interrupt(); return; }
+            mStreamGuardFuture.cancel(false);
+            mStreamGuardFuture = null;
         }
 
         int epoch = mSessionEpoch.get();
@@ -251,6 +246,32 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
         mPreviousSample = 0;
         mAudioQueue.clear();
 
+        // Enforce minimum gap between streams (like Bridge's stream_guard_timeout_ms).
+        // On busy channels, the server may not have fully released the previous stream.
+        // A value of 0 disables the guard entirely.
+        long guardMs = getBroadcastConfiguration().getStreamGuardMs();
+        long elapsed = System.currentTimeMillis() - mLastStreamStopTime;
+        if(guardMs > 0 && mLastStreamStopTime > 0 && elapsed < guardMs)
+        {
+            long waitMs = guardMs - elapsed;
+            mLog.debug("{}Stream guard: scheduling new stream start in {}ms", ch(), waitMs);
+            mStreamGuardFuture = ThreadPool.SCHEDULED.schedule(() -> {
+                synchronized(this) {
+                    // Only start if not stopped in the meantime
+                    if(mStreamActive.get() && mStreamSessionEpoch == epoch) {
+                        doStartRealTimeStream();
+                    }
+                }
+            }, waitMs, TimeUnit.MILLISECONDS);
+        }
+        else
+        {
+            doStartRealTimeStream();
+        }
+    }
+
+    private void doStartRealTimeStream()
+    {
         sendStartStream();
 
         if(mEncoderFuture == null || mEncoderFuture.isDone())
@@ -307,6 +328,12 @@ public class ZelloBroadcaster extends AbstractAudioBroadcaster<ZelloConfiguratio
         {
             mRelaxationFuture.cancel(false);
             mRelaxationFuture = null;
+        }
+
+        if(mStreamGuardFuture != null)
+        {
+            mStreamGuardFuture.cancel(false);
+            mStreamGuardFuture = null;
         }
 
         // Cancel the encoder future and wait for it to finish to avoid
