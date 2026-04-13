@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.github.dsheirer.audio.broadcast.mqtt.MqttService;
 
 /**
  * Manages scheduling and playback of audio segments to the local users audio system.
@@ -79,6 +80,7 @@ public class AudioPlaybackManager implements Listener<AudioSegment>, IAudioContr
     {
         mUserPreferences = userPreferences;
         MyEventBus.getGlobalEventBus().register(this);
+        MqttService.getInstance(mUserPreferences);
         AudioPlaybackDeviceDescriptor device = mUserPreferences.getPlaybackPreference().getAudioPlaybackDevice();
 
         if(device != null)
@@ -137,7 +139,7 @@ public class AudioPlaybackManager implements Listener<AudioSegment>, IAudioContr
             {
                 if(mTwoToneDetector != null) {
                     for(float[] buffer : newSegment.getAudioBuffers()) {
-                        mTwoToneDetector.processAudio(buffer);
+                        mTwoToneDetector.processAudio(buffer, newSegment);
                     }
                 }
                 mAudioSegments.add(newSegment);

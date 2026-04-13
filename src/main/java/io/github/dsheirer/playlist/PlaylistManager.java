@@ -418,6 +418,7 @@ public class PlaylistManager implements Listener<ChannelEvent>
             mChannelModel.addChannels(playlist.getChannels());
 
             mPlaylistLoading = false;
+            io.github.dsheirer.eventbus.MyEventBus.getGlobalEventBus().post(new io.github.dsheirer.playlist.PlaylistLoadedEvent(playlist));
         }
     }
 

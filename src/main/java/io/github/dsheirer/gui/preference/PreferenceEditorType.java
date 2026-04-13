@@ -37,6 +37,7 @@ public enum PreferenceEditorType
     TALKGROUP_FORMAT("Talkgroup & Radio ID"),
     VECTOR_CALIBRATION("Vector Calibration"),
     ICON_MANAGER("Icon Manager"),
+    MQTT("MQTT"),
     DEFAULT("Default");
 
     private String mLabel;
