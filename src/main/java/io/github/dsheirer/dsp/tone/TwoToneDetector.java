@@ -10,15 +10,22 @@ import io.github.dsheirer.audio.broadcast.zello.ZelloBroadcaster;
 import io.github.dsheirer.audio.broadcast.BroadcastConfiguration;
 import io.github.dsheirer.audio.broadcast.zello.ZelloConfiguration;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import io.github.dsheirer.audio.AudioSegment;
+import io.github.dsheirer.identifier.configuration.FrequencyConfigurationIdentifier;
+import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.IdentifierClass;
+import io.github.dsheirer.identifier.Form;
+import io.github.dsheirer.identifier.Role;
+import io.github.dsheirer.audio.broadcast.mqtt.MqttService;
 
 /**
  * Detects A/B two-tone sequences in a background thread to prevent audio playback stuttering.
@@ -38,7 +45,7 @@ public class TwoToneDetector
     private static final int POWER_THRESHOLD_DB = 10; // Simple threshold, tune as needed
 
     private final ExecutorService mExecutorService = Executors.newSingleThreadExecutor();
-    private final LinkedTransferQueue<float[]> mAudioQueue = new LinkedTransferQueue<>();
+    private final LinkedTransferQueue<AudioBufferWrapper> mAudioQueue = new LinkedTransferQueue<>();
     private final AtomicBoolean mRunning = new AtomicBoolean(true);
 
     private final PlaylistManager mPlaylistManager;
@@ -63,7 +70,8 @@ public class TwoToneDetector
             {
                 try
                 {
-                    float[] buffer = mAudioQueue.take();
+                    AudioBufferWrapper wrapper = mAudioQueue.take();
+                    processBuffer(wrapper.buffer, wrapper.segment);
                     processBuffer(buffer);
                 }
                 catch (InterruptedException e)
@@ -78,15 +86,15 @@ public class TwoToneDetector
         });
     }
 
-    public void processAudio(float[] buffer)
+    public void processAudio(float[] buffer, AudioSegment segment)
     {
         if(buffer != null && buffer.length == BLOCK_SIZE)
         {
-            mAudioQueue.offer(buffer.clone());
+            mAudioQueue.offer(new AudioBufferWrapper(buffer.clone(), segment));
         }
     }
 
-    private void processBuffer(float[] buffer)
+    private void processBuffer(float[] buffer, AudioSegment segment)
     {
         PlaylistV2 playlist = mPlaylistManager.getCurrentPlaylist();
         if(playlist == null) return;
@@ -152,7 +160,7 @@ public class TwoToneDetector
                 if(mCurrentToneBBlocks >= MIN_TONE_BLOCKS)
                 {
                     mLog.info("Two Tone Detected: {} (A:{} B:{})", config.getAlias(), config.getToneA(), config.getToneB());
-                    triggerAlert(config);
+                    triggerAlert(config, segment);
 
                     // Reset to avoid multiple triggers for the same continuous tone
                     mCurrentToneA = 0;
@@ -173,11 +181,27 @@ public class TwoToneDetector
         }
     }
 
-    private void triggerAlert(TwoToneConfiguration config)
+    private void triggerAlert(TwoToneConfiguration config, AudioSegment segment)
     {
         String template = config.getTemplate() != null ? config.getTemplate() : "Dispatch Received: %ALIAS%";
         String text = template.replace("%ALIAS%", config.getAlias() != null ? config.getAlias() : "Unknown");
 
+
+        if (config.isEnableMqttPublish()) {
+            String frequency = "unknown";
+            if (segment != null) {
+                Identifier id = segment.getIdentifierCollection().getIdentifier(IdentifierClass.CONFIGURATION, Form.CHANNEL_FREQUENCY, Role.ANY);
+                if (id instanceof FrequencyConfigurationIdentifier) {
+                    frequency = String.valueOf(((FrequencyConfigurationIdentifier)id).getValue());
+                }
+            }
+            String payload = config.getMqttPayload() != null ? config.getMqttPayload() : "";
+            payload = payload.replace("[DetectorName]", config.getAlias() != null ? config.getAlias() : "Unknown");
+            payload = payload.replace("[Timestamp]", String.valueOf(System.currentTimeMillis()));
+            payload = payload.replace("[Frequency]", frequency);
+
+            MqttService.getInstance().publish(config.getMqttTopic(), payload);
+        }
         for(ZelloBroadcaster broadcaster : mZelloBroadcasters)
         {
             BroadcastConfiguration bc = broadcaster.getBroadcastConfiguration();
@@ -202,5 +226,13 @@ public class TwoToneDetector
     {
         mRunning.set(false);
         mExecutorService.shutdownNow();
+    }
+    private static class AudioBufferWrapper {
+        float[] buffer;
+        AudioSegment segment;
+        AudioBufferWrapper(float[] buffer, AudioSegment segment) {
+            this.buffer = buffer;
+            this.segment = segment;
+        }
     }
 }
