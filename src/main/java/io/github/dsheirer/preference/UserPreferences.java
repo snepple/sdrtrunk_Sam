@@ -74,6 +74,7 @@ public class UserPreferences implements Listener<PreferenceType>
     private TalkgroupFormatPreference mTalkgroupFormatPreference;
     private TunerPreference mTunerPreference;
     private VectorCalibrationPreference mVectorCalibrationPreference;
+    private io.github.dsheirer.preference.mqtt.MqttPreference mMqttPreference;
 
     private SwingPreference mSwingPreference = new SwingPreference();
     private JavaFxPreferences mJavaFxPreferences = new JavaFxPreferences();
@@ -262,6 +263,7 @@ public class UserPreferences implements Listener<PreferenceType>
         mTalkgroupFormatPreference = new TalkgroupFormatPreference(this::receive);
         mTunerPreference = new TunerPreference(this::receive);
         mVectorCalibrationPreference = new VectorCalibrationPreference(this::receive);
+        mMqttPreference = new io.github.dsheirer.preference.mqtt.MqttPreference();
     }
 
     /**
