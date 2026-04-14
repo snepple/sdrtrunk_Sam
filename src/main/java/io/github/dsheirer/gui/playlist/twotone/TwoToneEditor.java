@@ -109,7 +109,7 @@ public class TwoToneEditor extends VBox
                 Bindings.unbindBidirectional(zelloField.textProperty(), oldV.zelloChannelProperty());
                 Bindings.unbindBidirectional(mqttCheck.selectedProperty(), oldV.enableMqttPublishProperty());
                 Bindings.unbindBidirectional(topicField.textProperty(), oldV.mqttTopicProperty());
-                Bindings.unbindBidirectional(messageField.textProperty(), oldV.mqttMessageProperty());
+                Bindings.unbindBidirectional(messageField.textProperty(), oldV.mqttPayloadProperty());
                 Bindings.unbindBidirectional(mZelloAlertEnabledBox.selectedProperty(), oldV.zelloAlertToneEnabledProperty());
                 Bindings.unbindBidirectional(mAlertToneFileBox.valueProperty(), oldV.alertToneFileProperty());
             }
@@ -120,7 +120,7 @@ public class TwoToneEditor extends VBox
                 Bindings.bindBidirectional(zelloField.textProperty(), newV.zelloChannelProperty());
                 Bindings.bindBidirectional(mqttCheck.selectedProperty(), newV.enableMqttPublishProperty());
                 Bindings.bindBidirectional(topicField.textProperty(), newV.mqttTopicProperty());
-                Bindings.bindBidirectional(messageField.textProperty(), newV.mqttMessageProperty());
+                Bindings.bindBidirectional(messageField.textProperty(), newV.mqttPayloadProperty());
                 Bindings.bindBidirectional(mZelloAlertEnabledBox.selectedProperty(), newV.zelloAlertToneEnabledProperty());
                 Bindings.bindBidirectional(mAlertToneFileBox.valueProperty(), newV.alertToneFileProperty());
             } else {

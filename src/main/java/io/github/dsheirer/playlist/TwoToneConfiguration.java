@@ -22,6 +22,8 @@ public class TwoToneConfiguration
     private BooleanProperty mEnableMqttPublishProperty = new SimpleBooleanProperty(false);
     private StringProperty mMqttTopicProperty = new SimpleStringProperty("");
     private StringProperty mMqttPayloadProperty = new SimpleStringProperty("{\"detector\": \"[DetectorName]\", \"state\": \"ON\", \"time\": \"[Timestamp]\"}");
+    private javafx.beans.property.BooleanProperty mZelloAlertToneEnabledProperty = new javafx.beans.property.SimpleBooleanProperty(false);
+    private StringProperty mAlertToneFileProperty = new SimpleStringProperty();
 
     public TwoToneConfiguration()
     {
@@ -38,6 +40,8 @@ public class TwoToneConfiguration
         copy.setEnableMqttPublish(isEnableMqttPublish());
         copy.setMqttTopic(getMqttTopic());
         copy.setMqttPayload(getMqttPayload());
+        copy.setZelloAlertToneEnabled(isZelloAlertToneEnabled());
+        copy.setAlertToneFile(getAlertToneFile());
         return copy;
     }
 
@@ -165,10 +169,43 @@ public class TwoToneConfiguration
     {
         return mMqttPayloadProperty;
     }
+
+    @JacksonXmlProperty(isAttribute = true, localName = "zelloAlertToneEnabled")
+    public boolean isZelloAlertToneEnabled()
+    {
+        return mZelloAlertToneEnabledProperty.get();
+    }
+
+    public void setZelloAlertToneEnabled(boolean enabled)
+    {
+        mZelloAlertToneEnabledProperty.set(enabled);
+    }
+
+    @JsonIgnore
+    public javafx.beans.property.BooleanProperty zelloAlertToneEnabledProperty()
+    {
+        return mZelloAlertToneEnabledProperty;
+    }
+
+    @JacksonXmlProperty(isAttribute = true, localName = "alertToneFile")
+    public String getAlertToneFile()
+    {
+        return mAlertToneFileProperty.get();
+    }
+
+    public void setAlertToneFile(String file)
+    {
+        mAlertToneFileProperty.set(file);
+    }
+
+    @JsonIgnore
+    public StringProperty alertToneFileProperty()
+    {
+        return mAlertToneFileProperty;
+    }
     public static Callback<TwoToneConfiguration, Observable[]> extractor()
     {
         return (TwoToneConfiguration config) -> new Observable[]{
-            config.aliasProperty(), config.templateProperty(), config.zelloChannelProperty(), config.enableMqttPublishProperty(), config.mqttTopicProperty(), config.mqttPayloadProperty()
-        };
-    }
+            config.aliasProperty(), config.templateProperty(), config.zelloChannelProperty(), config.enableMqttPublishProperty(), config.mqttTopicProperty(), config.mqttPayloadProperty(), config.zelloAlertToneEnabledProperty(), config.alertToneFileProperty()
+        };}
 }
