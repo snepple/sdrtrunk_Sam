@@ -2,6 +2,8 @@ package io.github.dsheirer.preference.mqtt;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import io.github.dsheirer.preference.Preference;
+import io.github.dsheirer.sample.Listener;
+import io.github.dsheirer.preference.PreferenceType;
 
 import java.util.UUID;
 
@@ -13,8 +15,9 @@ public class MqttPreference extends Preference
     private String mClientId = "";
     private boolean mEnabled = false;
 
-    public MqttPreference()
+    public MqttPreference(Listener<PreferenceType> listener)
     {
+        super(listener);
     }
 
     @JacksonXmlProperty(isAttribute = true, localName = "server")
@@ -73,5 +76,11 @@ public class MqttPreference extends Preference
     public void setEnabled(boolean enabled)
     {
         mEnabled = enabled;
+    }
+
+    @Override
+    public PreferenceType getPreferenceType()
+    {
+        return PreferenceType.MQTT;
     }
 }

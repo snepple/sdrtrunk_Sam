@@ -72,7 +72,6 @@ public class TwoToneDetector
                 {
                     AudioBufferWrapper wrapper = mAudioQueue.take();
                     processBuffer(wrapper.buffer, wrapper.segment);
-                    processBuffer(buffer);
                 }
                 catch (InterruptedException e)
                 {

@@ -661,7 +661,7 @@ public class ZelloConsumerBroadcaster extends AbstractAudioBroadcaster<ZelloCons
             return;
         }
 
-        ZelloConfiguration config = getBroadcastConfiguration();
+        ZelloConsumerConfiguration config = getBroadcastConfiguration();
         JsonObject cmd = new JsonObject();
         cmd.addProperty("command", "send_text_message");
         int seq = mSequence.getAndIncrement();

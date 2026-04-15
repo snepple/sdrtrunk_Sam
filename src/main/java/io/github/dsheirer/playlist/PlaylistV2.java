@@ -65,9 +65,6 @@ public class PlaylistV2
         mVersion = version;
     }
 
-    @JacksonXmlProperty(isAttribute = false, localName = "alias")
-
-
     @JacksonXmlProperty(isAttribute = false, localName = "twoTone")
     public List<TwoToneConfiguration> getTwoToneConfigurations()
     {

@@ -85,6 +85,8 @@ public class PlaylistManager implements Listener<ChannelEvent>
     private AtomicBoolean mPlaylistSavePending = new AtomicBoolean();
     private ScheduledFuture<?> mPlaylistSaveFuture;
     private boolean mPlaylistLoading = false;
+    private List<TwoToneConfiguration> mTwoToneConfigurations = new ArrayList<>();
+    private boolean mToneDiscoveryEnabled = false;
     private List<IAliasListRefreshListener> mAliasListRefreshListeners = new ArrayList<>();
 
     /**
@@ -417,6 +419,12 @@ public class PlaylistManager implements Listener<ChannelEvent>
             //Channel model has to be loaded last since it will auto-start channels that are enabled
             mChannelModel.addChannels(playlist.getChannels());
 
+            if (playlist.getTwoToneConfigurations() != null) {
+                mTwoToneConfigurations.clear();
+                mTwoToneConfigurations.addAll(playlist.getTwoToneConfigurations());
+            }
+            mToneDiscoveryEnabled = playlist.isToneDiscoveryEnabled();
+
             mPlaylistLoading = false;
             io.github.dsheirer.eventbus.MyEventBus.getGlobalEventBus().post(new io.github.dsheirer.playlist.PlaylistLoadedEvent(playlist));
         }
@@ -443,6 +451,25 @@ public class PlaylistManager implements Listener<ChannelEvent>
         }
     }
 
+
+    /**
+     * Constructs and returns the current playlist based on the internal models.
+     */
+    public PlaylistV2 getCurrentPlaylist()
+    {
+        PlaylistV2 playlist = new PlaylistV2();
+
+        playlist.setAliases(new ArrayList<>(mAliasModel.getAliases()));
+        playlist.setBroadcastConfigurations(new ArrayList<>(mBroadcastModel.getBroadcastConfigurations()));
+        playlist.setChannels(new ArrayList<>(mChannelModel.getChannels()));
+        playlist.setChannelMaps(new ArrayList<>(mChannelMapModel.getChannelMaps()));
+        playlist.setVersion(PLAYLIST_CURRENT_VERSION);
+        playlist.setTwoToneConfigurations(new ArrayList<>(mTwoToneConfigurations));
+        playlist.setToneDiscoveryEnabled(mToneDiscoveryEnabled);
+
+        return playlist;
+    }
+
     /**
      * Saves the current playlist
      */
@@ -450,13 +477,7 @@ public class PlaylistManager implements Listener<ChannelEvent>
     {
         PlaylistPreference playlistPreference = mUserPreferences.getPlaylistPreference();
 
-        PlaylistV2 playlist = new PlaylistV2();
-
-        playlist.setAliases(new ArrayList(mAliasModel.getAliases()));
-        playlist.setBroadcastConfigurations(new ArrayList(mBroadcastModel.getBroadcastConfigurations()));
-        playlist.setChannels(new ArrayList(mChannelModel.getChannels()));
-        playlist.setChannelMaps(new ArrayList(mChannelMapModel.getChannelMaps()));
-        playlist.setVersion(PLAYLIST_CURRENT_VERSION);
+        PlaylistV2 playlist = getCurrentPlaylist();
 
         //Create a backup copy of the current playlist
         if(Files.exists(playlistPreference.getPlaylist()))
