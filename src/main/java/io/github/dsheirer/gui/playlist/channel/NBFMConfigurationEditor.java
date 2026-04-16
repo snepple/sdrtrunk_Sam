@@ -142,10 +142,12 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
      * @param tunerManager for tuners
      * @param userPreferences for preferences
      */
+    private final UserPreferences mUserPreferences;
     public NBFMConfigurationEditor(PlaylistManager playlistManager, TunerManager tunerManager,
                                    UserPreferences userPreferences, IFilterProcessor filterProcessor)
     {
         super(playlistManager, tunerManager, userPreferences, filterProcessor);
+        mUserPreferences = userPreferences;
         getTitledPanesBox().getChildren().add(getSourcePane());
         getTitledPanesBox().getChildren().add(getDecoderPane());
         getTitledPanesBox().getChildren().add(getToneFilterPane());
@@ -785,7 +787,7 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
         analyzePane.setVgap(5);
         analyzePane.setPadding(new Insets(5,0,10,0));
 
-        mAnalyzeButton = new javafx.scene.control.Button("Analyze Audio & Suggest Settings");
+        mAnalyzeButton = new javafx.scene.control.Button("AI Enhance");
         mAnalyzeButton.setTooltip(new Tooltip("Listen to audio for 5-10 seconds and suggest optimal threshold\nMake sure transmissions are active!"));
         mAnalyzeButton.setStyle("-fx-font-weight: bold;");
         mAnalyzeButton.setOnAction(e -> handleAnalyzeClick());
@@ -1361,58 +1363,35 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
 
     private void handleAnalyzeClick()
     {
-        if (mAnalyzeButton.getText().equals("Analyze Audio & Suggest Settings")) {
-            // Start analysis
-            mAnalyzeButton.setText("Stop Analysis");
-            mAnalyzeStatusLabel.setText("Analyzing... listening to audio (10 seconds)");
+        if (mAnalyzeButton.getText().equals("AI Enhance")) {
+            mAnalyzeButton.setText("Enhancing...");
+            mAnalyzeStatusLabel.setText("Connecting to Gemini...");
             mAnalyzeStatusLabel.setStyle("-fx-text-fill: #0066cc; -fx-font-weight: bold;");
-
-            // TODO: Get decoder's audio filter and start analyzing
-            // NBFMAudioFilters filter = getDecoderAudioFilter();
-            // filter.startAnalyzing();
-
-            // TODO: After 10 seconds (or when stopped), get results
-            // javafx.application.Platform.runLater(() -> {
-            //     float[] results = filter.stopAnalyzing();
-            //     if (results != null) {
-            //         float carrierMax = results[0];
-            //         float voiceMin = results[1];
-            //         float recommended = results[2];
-            //
-            //         mSquelchThresholdSlider.setValue(recommended);
-            //         mAnalyzeStatusLabel.setText(String.format(
-            //             "✅ Suggested: %.1f%% (Carrier: %.1f%%, Voice: %.1f%%)",
-            //             recommended, carrierMax, voiceMin));
-            //         mAnalyzeStatusLabel.setStyle("-fx-text-fill: #009900; -fx-font-weight: bold;");
-            //         modifiedProperty().set(true);
-            //     } else {
-            //         mAnalyzeStatusLabel.setText("⚠️ Not enough audio - try again with active transmissions");
-            //         mAnalyzeStatusLabel.setStyle("-fx-text-fill: #cc6600;");
-            //     }
-            //     mAnalyzeButton.setText("Analyze Audio & Suggest Settings");
-            // }, 10000);  // 10 second delay
-
-            // For now, just show a message after short delay
-            new javafx.animation.Timeline(new javafx.animation.KeyFrame(
-                javafx.util.Duration.millis(1000),
-                ae -> {
-                    mAnalyzeStatusLabel.setText("⚠️ Analysis requires decoder connection (not yet wired)");
-                    mAnalyzeStatusLabel.setStyle("-fx-text-fill: #cc6600;");
-                    mAnalyzeButton.setText("Analyze Audio & Suggest Settings");
+            io.github.dsheirer.module.decode.nbfm.DecodeConfigNBFM config = (io.github.dsheirer.module.decode.nbfm.DecodeConfigNBFM) getItem().getDecodeConfiguration();
+            new Thread(() -> {
+                try {
+                    io.github.dsheirer.module.decode.nbfm.ai.AIAudioOptimizer optimizer = new io.github.dsheirer.module.decode.nbfm.ai.AIAudioOptimizer(mUserPreferences);
+                    java.util.List<java.util.List<float[]>> events = new java.util.ArrayList<>();
+                    events.add(new java.util.ArrayList<>());
+                    optimizer.optimize(config, events);
+                    javafx.application.Platform.runLater(() -> {
+                        mAnalyzeStatusLabel.setText("\u2705 AI Optimization Applied.");
+                        mAnalyzeStatusLabel.setStyle("-fx-text-fill: #009900; -fx-font-weight: bold;");
+                        mAnalyzeButton.setText("AI Enhance");
+                        mVoiceEnhanceEnabledSwitch.setSelected(config.isAgcEnabled());
+                        mVoiceEnhanceSlider.setValue(config.getAgcTargetLevel());
+                        modifiedProperty().set(true);
+                    });
+                } catch (Exception e) {
+                    javafx.application.Platform.runLater(() -> {
+                        mAnalyzeStatusLabel.setText("\u26A0\uFE0F Error: " + e.getMessage());
+                        mAnalyzeStatusLabel.setStyle("-fx-text-fill: #cc0000;");
+                        mAnalyzeButton.setText("AI Enhance");
+                    });
                 }
-            )).play();
-
-        } else {
-            // Stop analysis
-            mAnalyzeButton.setText("Analyze Audio & Suggest Settings");
-            mAnalyzeStatusLabel.setText("Analysis stopped");
-            mAnalyzeStatusLabel.setStyle("-fx-text-fill: #666;");
-
-            // TODO: Stop analyzing
-            // filter.stopAnalyzing();
+            }).start();
         }
     }
-
     @Override
     protected void setEventLogConfiguration(EventLogConfiguration config)
     {

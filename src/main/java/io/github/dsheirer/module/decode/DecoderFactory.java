@@ -172,7 +172,7 @@ public class DecoderFactory
                     trafficChannelManager, channelDescriptor);
                 break;
             case NBFM:
-                processNBFM(channel, modules, aliasList, decodeConfig);
+                processNBFM(channel, modules, aliasList, decodeConfig, userPreferences);
                 break;
             case LTR:
                 processLTRStandard(channel, modules, aliasList, (DecodeConfigLTRStandard) decodeConfig);
@@ -442,7 +442,7 @@ public class DecoderFactory
      * @param aliasList for the channel
      * @param decodeConfig for the channel
      */
-    private static void processNBFM(Channel channel, List<Module> modules, AliasList aliasList, DecodeConfiguration decodeConfig)
+    private static void processNBFM(Channel channel, List<Module> modules, AliasList aliasList, DecodeConfiguration decodeConfig, UserPreferences mUserPreferences)
     {
         if(!(decodeConfig instanceof DecodeConfigNBFM))
         {
@@ -452,7 +452,7 @@ public class DecoderFactory
 
         DecodeConfigNBFM decodeConfigNBFM = (DecodeConfigNBFM)decodeConfig;
         NBFMDecoderState decoderState = new NBFMDecoderState(channel.getName(), decodeConfigNBFM);
-        NBFMDecoder decoder = new NBFMDecoder(decodeConfigNBFM);
+        NBFMDecoder decoder = new NBFMDecoder(decodeConfigNBFM, mUserPreferences);
         decoder.setDecoderState(decoderState);
         modules.add(decoder);
         modules.add(decoderState);
