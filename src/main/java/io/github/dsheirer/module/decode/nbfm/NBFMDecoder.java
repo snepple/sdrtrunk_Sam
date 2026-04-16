@@ -48,6 +48,11 @@ import io.github.dsheirer.sample.complex.IComplexSamplesListener;
 import io.github.dsheirer.sample.real.IRealBufferProvider;
 import io.github.dsheirer.source.ISourceEventListener;
 import io.github.dsheirer.source.SourceEvent;
+import io.github.dsheirer.module.decode.nbfm.ai.AIAudioOptimizer;
+
+import io.github.dsheirer.module.decode.nbfm.ai.AudioBufferManager;
+
+import io.github.dsheirer.preference.UserPreferences;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,6 +122,8 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
 
     // VoxSend audio filter chain (low-pass, de-emphasis, bass boost, voice enhancement, noise gate)
     private NBFMAudioFilters mAudioFilters;
+    private AudioBufferManager mAudioBufferManager = new AudioBufferManager();
+    private AIAudioOptimizer mAIAudioOptimizer;
     private final DecodeConfigNBFM mNBFMConfig;
 
     /**
@@ -124,12 +131,13 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
      *
      * @param config to setup the NBFM decoder and noise squelch control.
      */
-    public NBFMDecoder(DecodeConfigNBFM config)
+    public NBFMDecoder(DecodeConfigNBFM config, UserPreferences userPreferences)
     {
         super(config);
 
         //Save config reference for audio filter initialization (deferred until sample rate is known)
         mNBFMConfig = config;
+        mAIAudioOptimizer = new AIAudioOptimizer(userPreferences);
 
         //Save channel bandwidth to setup channel baseband filter.
         mChannelBandwidth = config.getBandwidth().getValue();
@@ -452,6 +460,7 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
 
         // Step 3: Apply VoxSend audio filter chain (low-pass, de-emphasis, bass boost,
         //         voice enhancement, noise gate) — processes samples in-place
+        mAudioBufferManager.addAudioSamples(resampledAudio);
         if(mAudioFilters != null)
         {
             mAudioFilters.process(resampledAudio);
@@ -473,7 +482,14 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
      *
      * @param listener to receive demodulated, resampled audio sample buffers.
      */
-    @Override
+    public AudioBufferManager getAudioBufferManager() {
+        return mAudioBufferManager;
+    }
+
+    public AIAudioOptimizer getAIAudioOptimizer() {
+        return mAIAudioOptimizer;
+    }
+
     public void setBufferListener(Listener<float[]> listener)
     {
         mResampledBufferListener = listener;
@@ -532,6 +548,7 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
      */
     private void notifyCallStart()
     {
+        mAudioBufferManager.startEvent();
         broadcast(new DecoderStateEvent(this, DecoderStateEvent.Event.START, State.CALL, 0));
     }
 
@@ -548,6 +565,7 @@ public class NBFMDecoder extends SquelchControlDecoder implements ISourceEventLi
      */
     private void notifyCallEnd()
     {
+        mAudioBufferManager.endEvent();
         broadcast(new DecoderStateEvent(this, DecoderStateEvent.Event.END, State.CALL, 0));
     }
 

@@ -21,6 +21,7 @@ package io.github.dsheirer.preference;
 
 import io.github.dsheirer.eventbus.MyEventBus;
 import io.github.dsheirer.preference.application.ApplicationPreference;
+import io.github.dsheirer.preference.ai.AIPreference;
 import io.github.dsheirer.preference.calibration.VectorCalibrationPreference;
 import io.github.dsheirer.preference.decoder.JmbeLibraryPreference;
 import io.github.dsheirer.preference.diagnostics.DiagnosticsPreference;
@@ -60,6 +61,7 @@ import io.github.dsheirer.preference.mqtt.MqttPreference;
 public class UserPreferences implements Listener<PreferenceType>
 {
     private ApplicationPreference mApplicationPreference;
+    private AIPreference mAIPreference;
     private ChannelMultiFrequencyPreference mChannelMultiFrequencyPreference;
     private DecodeEventPreference mDecodeEventPreference;
     private DiagnosticsPreference mDiagnosticsPreference;
@@ -91,6 +93,10 @@ public class UserPreferences implements Listener<PreferenceType>
      * Application general/miscellaneous preferences.
      * @return application preferences.
      */
+    public AIPreference getAIPreference() {
+        return mAIPreference;
+    }
+
     public ApplicationPreference getApplicationPreference()
     {
         return mApplicationPreference;
@@ -247,6 +253,7 @@ public class UserPreferences implements Listener<PreferenceType>
     private void loadPreferenceTypes()
     {
         mApplicationPreference = new ApplicationPreference(this::receive);
+        mAIPreference = new AIPreference(this::receive);
         mChannelMultiFrequencyPreference = new ChannelMultiFrequencyPreference(this::receive);
         mDecodeEventPreference = new DecodeEventPreference(this::receive);
         mDiagnosticsPreference = new DiagnosticsPreference(this::receive);
