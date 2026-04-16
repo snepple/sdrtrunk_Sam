@@ -88,6 +88,23 @@ public class TwoToneEditor extends VBox
         editorGrid.add(new Label("MQTT Payload:"), 2, 2);
         editorGrid.add(payloadArea, 3, 2, 1, 2);
 
+        CheckBox textMessageCheck = new CheckBox("Enable Text Message");
+        Label textMessageInfo = new Label("Messages are sent to the Zello Channel.");
+        textMessageInfo.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
+        TextField templateField = new TextField();
+
+        HBox previewBox = new HBox(5);
+        Label previewLabel = new Label("Preview:");
+        Label previewText = new Label();
+        previewText.setStyle("-fx-font-style: italic;");
+        previewBox.getChildren().addAll(previewLabel, previewText);
+
+        Runnable updatePreview = () -> {
+            String template = templateField.getText() != null && !templateField.getText().isEmpty() ? templateField.getText() : "Dispatch Received: %ALIAS%";
+            String alias = aliasField.getText() != null && !aliasField.getText().isEmpty() ? aliasField.getText() : "Unknown";
+            previewText.setText(template.replace("%ALIAS%", alias));
+        };
+
         CheckBox zelloAlertCheck = new CheckBox("Enable Zello Alert Tone");
         ComboBox<String> alertToneCombo = new ComboBox<>();
         alertToneCombo.getItems().addAll("alert1.wav", "alert2.wav");
@@ -115,10 +132,19 @@ public class TwoToneEditor extends VBox
         alertToneCombo.disableProperty().bind(zelloAlertCheck.selectedProperty().not());
         previewBtn.disableProperty().bind(zelloAlertCheck.selectedProperty().not());
 
-        editorGrid.add(zelloAlertCheck, 0, 5, 2, 1);
-        editorGrid.add(new Label("Alert Tone File:"), 0, 6);
-        editorGrid.add(alertToneCombo, 1, 6);
-        editorGrid.add(previewBtn, 2, 6);
+        templateField.disableProperty().bind(textMessageCheck.selectedProperty().not());
+        previewBox.visibleProperty().bind(textMessageCheck.selectedProperty());
+        previewBox.managedProperty().bind(textMessageCheck.selectedProperty());
+
+        editorGrid.add(textMessageCheck, 0, 5);
+        editorGrid.add(textMessageInfo, 1, 5);
+        editorGrid.add(new Label("Message Template:"), 0, 6);
+        editorGrid.add(templateField, 1, 6);
+        editorGrid.add(previewBox, 1, 7);
+        editorGrid.add(zelloAlertCheck, 0, 8, 2, 1);
+        editorGrid.add(new Label("Alert Tone File:"), 0, 9);
+        editorGrid.add(alertToneCombo, 1, 9);
+        editorGrid.add(previewBtn, 2, 9);
 
         toneBField.disableProperty().bind(sequenceTypeCombo.valueProperty().isEqualTo(TwoToneConfiguration.SequenceType.LONG_A));
 
@@ -132,6 +158,8 @@ public class TwoToneEditor extends VBox
                 payloadArea.textProperty().unbindBidirectional(oldVal.mqttPayloadProperty());
                 zelloAlertCheck.selectedProperty().unbindBidirectional(oldVal.enableZelloAlertProperty());
                 alertToneCombo.valueProperty().unbindBidirectional(oldVal.zelloAlertFileProperty());
+                templateField.textProperty().unbindBidirectional(oldVal.templateProperty());
+                textMessageCheck.selectedProperty().unbindBidirectional(oldVal.enableZelloTextMessageProperty());
 
                 oldVal.setToneA(toneAField.getText().isEmpty() ? 0 : Double.parseDouble(toneAField.getText()));
                 oldVal.setToneB(toneBField.getText().isEmpty() ? 0 : Double.parseDouble(toneBField.getText()));
@@ -147,6 +175,8 @@ public class TwoToneEditor extends VBox
                 payloadArea.textProperty().bindBidirectional(newVal.mqttPayloadProperty());
                 zelloAlertCheck.selectedProperty().bindBidirectional(newVal.enableZelloAlertProperty());
                 alertToneCombo.valueProperty().bindBidirectional(newVal.zelloAlertFileProperty());
+                templateField.textProperty().bindBidirectional(newVal.templateProperty());
+                textMessageCheck.selectedProperty().bindBidirectional(newVal.enableZelloTextMessageProperty());
             } else {
                 aliasField.clear();
                 sequenceTypeCombo.getSelectionModel().clearSelection();
@@ -158,10 +188,16 @@ public class TwoToneEditor extends VBox
                 payloadArea.clear();
                 zelloAlertCheck.setSelected(false);
                 alertToneCombo.getSelectionModel().clearSelection();
+                templateField.clear();
+                textMessageCheck.setSelected(false);
             }
+            updatePreview.run();
         });
 
         // Basic double conversion listener
+        aliasField.textProperty().addListener((obs, o, n) -> updatePreview.run());
+        templateField.textProperty().addListener((obs, o, n) -> updatePreview.run());
+
         toneAField.textProperty().addListener((obs, o, n) -> {
             TwoToneConfiguration sel = mTableView.getSelectionModel().getSelectedItem();
             if (sel != null && !n.isEmpty()) {
